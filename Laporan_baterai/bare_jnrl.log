@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 21.12) (preloaded format=pdflatex 2022.3.29)  3 APR 2022 21:14
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 21.12) (preloaded format=pdflatex 2022.3.29)  3 APR 2022 21:19
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -126,29 +126,29 @@ LaTeX Font Info:    ... okay on input line 350.
 
 -- Lines per column: 58 (exact).
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 438.
+(Font)              <9> on input line 437.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 438.
+(Font)              <6> on input line 437.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <5> on input line 438.
+(Font)              <5> on input line 437.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <7> on input line 475.
+(Font)              <7> on input line 474.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <8> on input line 664.
+(Font)              <8> on input line 663.
 [1{C:/Users/cahya/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}
 
 
 ] (bare_jnrl.aux) ) 
 Here is how much of TeX's memory you used:
- 1257 strings out of 478905
- 24694 string characters out of 2851920
+ 1256 strings out of 478905
+ 24687 string characters out of 2851920
  323953 words of memory out of 3000000
  19165 multiletter control sequences out of 15000+600000
- 446522 words of font info for 96 fonts, out of 8000000 for 9000
+ 445386 words of font info for 95 fonts, out of 8000000 for 9000
  1144 hyphenation exceptions out of 8191
  36i,8n,41p,249b,230s stack positions out of 5000i,500n,10000p,200000b,80000s
 {C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}<C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on bare_jnrl.pdf (1 page, 58536 bytes).
+Output written on bare_jnrl.pdf (1 page, 57028 bytes).
 PDF statistics:
  27 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)

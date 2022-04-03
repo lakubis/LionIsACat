@@ -1,5 +1,5 @@
 # Fdb version 3
-["pdflatex"] 1648995271 "d:/Github stuff/LionIsACat/Laporan_baterai/bare_jnrl.tex" "bare_jnrl.pdf" "bare_jnrl" 1648995272
+["pdflatex"] 1648995565 "d:/Github stuff/LionIsACat/Laporan_baterai/bare_jnrl.tex" "bare_jnrl.pdf" "bare_jnrl" 1648995566
   "C:/Users/cahya/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1648995270 82666 6ae954049cbd801ff08c004e318ae5a8 ""
   "C:/Users/cahya/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1648565910 9716123 4c53ad5b815c9f930051ad524c1b5dc0 ""
   "C:/Users/cahya/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc" 1458473887 4993 80dc9bab7f31fb78a000ccfed0e27cab ""
@@ -33,9 +33,9 @@
   "C:/Users/cahya/AppData/Local/Programs/MiKTeX/tex/latex/ieeetran/IEEEtran.cls" 1440627644 281957 5b2e4fa15b0f7eabb840ebf67df4c0f7 ""
   "C:/Users/cahya/AppData/Local/Programs/MiKTeX/tex/latex/l3backend/l3backend-pdftex.def" 1628077986 27662 df2ac0cbce6c3f309d48d78e7c627ccb ""
   "C:/Users/cahya/AppData/Local/Programs/MiKTeX/tex/latex/psnfss/ot1ptm.fd" 1585253778 1007 15056f4a61917ceed3a44e4ac11fcc52 ""
-  "bare_jnrl.aux" 1648995272 1172 8e330c95c63d496501cbe20de8414534 "pdflatex"
-  "bare_jnrl.tex" 1648995261 27598 bd190c35099047318114023007b41333 ""
-  "d:/Github stuff/LionIsACat/Laporan_baterai/bare_jnrl.tex" 1648995261 27598 bd190c35099047318114023007b41333 ""
+  "bare_jnrl.aux" 1648995566 1172 8e330c95c63d496501cbe20de8414534 "pdflatex"
+  "bare_jnrl.tex" 1648995564 27496 da98ece447235454e8c2786e09b15099 ""
+  "d:/Github stuff/LionIsACat/Laporan_baterai/bare_jnrl.tex" 1648995564 27496 da98ece447235454e8c2786e09b15099 ""
   (generated)
   "bare_jnrl.aux"
   "bare_jnrl.log"
