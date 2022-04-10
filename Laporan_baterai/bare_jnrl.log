@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 21.12) (preloaded format=pdflatex 2022.3.29)  3 APR 2022 21:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 21.12) (preloaded format=pdflatex 2022.3.29)  10 APR 2022 14:40
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -109,32 +109,32 @@ File: l3backend-pdftex.def 2021-08-04 L3 backend support: PDF output (pdfTeX)
 ) (bare_jnrl.aux)
 \openout1 = `bare_jnrl.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 350.
-LaTeX Font Info:    ... okay on input line 350.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 352.
+LaTeX Font Info:    ... okay on input line 352.
 
 -- Lines per column: 58 (exact).
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 437.
+(Font)              <9> on input line 439.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 437.
+(Font)              <6> on input line 439.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <5> on input line 437.
+(Font)              <5> on input line 439.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <7> on input line 474.
+(Font)              <7> on input line 476.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <8> on input line 663.
+(Font)              <8> on input line 665.
 [1{C:/Users/cahya/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}
 
 
