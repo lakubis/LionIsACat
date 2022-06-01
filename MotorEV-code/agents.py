@@ -30,10 +30,13 @@ class agents:
 
     def explore(self): 
         decision = np.random.randint(0,1)
+        change = np.random.randint(-1,1)
+        pct_change = 1 + np.random.randn()
+        self.battery_life = self.battery_life - (change*pct_change)
         if decision == 0 :
-            self.position_x = self.position_x + np.random.randint(-1,1) # can move left, right, or stay
+            self.position_x = self.position_x + change  # can move left, right, or stay
         else : 
-            self.position_y = self.position_y + np.random.randint(-1,1) # can move up, down, or stay
+            self.position_y = self.position_y + change # can move up, down, or stay
     
     def check_station(self): 
         '''manhattan distance'''
@@ -44,20 +47,7 @@ class baterai:
     num_of_batteries = 0
     degradation_rate = 0.00025 #Ini didapatkan dari standar baterai HP, secara umum setelah 800 charge cycle, battery health tinggal 80%/0.8
 
-    def __init__(self, max_cap = 1300, health =1):
-        # baterai memiliki tiga parameter sebagai berikut:
-        # max_cap: kapasitas maksimum baterai, dalam satuan Watt-hour (Baterai gogoro 1.3 kWh)
-        # health: kesehatan baterai, real_cap = max_cap * health. Nilai health berkisar antara 0-1. By default 1.
-        # charge: isi dari baterai sekarang, charge harus < real_cap. Ketika baterai diciptakan, baterai terisi penuh
-        self.max_cap = max_cap
-        self.health = health
-        self.real_cap = max_cap*health
-        self.charge = self.real_cap
-        baterai.num_of_batteries += 1
-        self.id = baterai.num_of_batteries
-
-    def degrade(self):
-        self.health -= baterai.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
+    
 
 
 # %%
