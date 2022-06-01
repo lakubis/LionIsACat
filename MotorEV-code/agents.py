@@ -11,7 +11,7 @@ class agents:
     # R : jarak yang ditempuh dalam satu hari 
     # battery_life : isi atau kapasitas dari baterai
     def __init__(self, driving_r): 
-        self.battery_life = battery()
+        self.battery_life = baterai()
         self.driving_r = driving_r
         self.position_x = np.random.randint(1,100)
         self.position_y = np.random.randint(1,100)
@@ -37,8 +37,7 @@ class agents:
     
     def check_station(self): 
         '''manhattan distance'''
-        
-        pass
+        return self.position_x 
         
 # %%
 class baterai:
