@@ -3,6 +3,7 @@ import numpy as np
 from mesa import Agent,Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
+from mesa.datacollection import DataCollector
 
 
 #%%
@@ -80,12 +81,17 @@ class station(Agent):
     
 # %%
 class switching_model(Model):
-    '''variabel spec berisi tuple (inventory_size, charging_port_size)'''
-    def __init__(self,num_of_motorist, num_of_stations, spec, width,height):
+    '''
+    inv_size: Ukuran inventory station
+    cp_size: Ukuran charging port
+    '''
+    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width,height):
 
         self.num_of_motorist = num_of_motorist
         self.num_of_stations = num_of_stations
-        self.spec = spec
+        self.inv_size = inv_size
+        self.cp_size = cp_size
+        self.num_of_batteries = num_of_motorist + num_of_stations*(inv_size + cp_size)
         self.grid = MultiGrid(width, height, True)
         self.schedule = RandomActivation(self)
 

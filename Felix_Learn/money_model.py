@@ -2,6 +2,10 @@ from random import Random
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
+from mesa.datacollection import DataCollector
+
+def compute_gini(model):
+    agent_wealths = [agent.wealth for agent in model.schedule.agents]
 
 class MoneyAgent(Agent):
 
@@ -40,6 +44,8 @@ class MoneyModel(Model):
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(a,(x,y))
+
+        self.datacollector = DataCollector(model_reporters={"Gini":compute_gini}, agent_reporters={"Wealth":"wealth"})
 
     def step(self):
         self.schedule.step()
