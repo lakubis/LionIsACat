@@ -7,7 +7,7 @@ from mesa.datacollection import DataCollector
 
 
 #%%
-class battery:
+class battery(Agent):
     num_of_batteries = 0
     degradation_rate = 0.00025 #Ini didapatkan dari standar baterai HP, secara umum setelah 800 charge cycle, battery health tinggal 80%/0.8
 
@@ -39,13 +39,22 @@ class battery:
 
 class motorist(Agent):
 
-    def __init__(self, unique_id, pos, model, batteries = None): 
+    def __init__(self, unique_id, pos, model, batteries = None,moore = False): 
         super().__init__(unique_id,model)
         #Assign baterai
         if batteries == None:
-            self.batteries = []
+            self.batteries = None
         else:
             self.batteries = batteries
+
+        #Sekarang akan ditentukan status driver
+        self.alive = False
+        if self.batteries != None:
+            if self.batteries.charge > 0:
+                self.alive = True
+        
+        #Tentukan aturan gerakan motor, bila True maka moore, bila False maka manhattan
+        self.moore = moore
 
         #Assign posisi
         self.pos = pos
@@ -55,18 +64,33 @@ class motorist(Agent):
         self.batteries = new_bat
         return empties
 
-    #TODO: Isi fungsi ini
-    def move(self):
+    #TODO: Isi fungsi ini dengan logika gerak
+    def random_move(self):
+        #argumen terakhir false karena kita ingin driver untuk tetap bergerak, bukan diam di tempat
+        next_moves = self.model.grid.get_neighbourhood(self.pos, self.moore, False)
+        #pick a position to move to
+        next_move = self.random.choice(next_moves)
+        #move the agent
+        self.model.grid.move_agent(self.next_move)
+    
+    #TODO: Buat fungsi untuk mencari station terdekat 
+    def move_to_station(self):
         pass
 
-    #TODO: Isi fungsi ini
+    #TODO: Isi fungsi ini dengan random move dan move to station
     def step(self):
         pass
+        
 
 
 # %%
 class station(Agent):
-
+    '''
+    Di sini, baterai akan disimpan di inventory dan juga charging port.
+    inventory_full: List baterai yang terisi penuh
+    inventory_empty: List baterai yang kosong tapi belum bisa di cas di charging port (kosong bukan berarti 0, tapi tidak terisi penuh)
+    charging_port: List baterai yang sedang di cas
+    '''
     def __init__(self, unique_id, pos, model, inventory_size = 40,charging_port_size=10, assigned_batteries = None):
         super().__init__(unique_id,model)
         
@@ -76,22 +100,51 @@ class station(Agent):
         self.charging_port_size = charging_port_size
         self.inventory_size = inventory_size
 
+        #Add array inventory dan charging port
+        self.inventory_full = []
+        self.inventory_empty = []
+        self.charging_port = []
+
         if assigned_batteries ==None:
-            self.inventory = []
-            self.charging_port = []
-            self.queue = []
-        else:
-            #Ini ntar jangan lupa diisi
             pass
+        else:
+            self.inventory_full = []
+            self.inventory_empty = []
+            self.charging_port = []
+            #Di cek dulu apakah assigned_batteries melebihi kapasitas station
+            if len(assigned_batteries) > charging_port_size + inventory_size:
+                raise Exception("Baterai yang di assign di station terlalu banyak")
+            else:
+                #Kita akan assign battery, pertama2 akan di cek dulu apakah terdapat error, lalu baru di cek apakah baterai penuh atau kosong
+                for i in assigned_batteries:
+                    if i.charge > i.real_cap:
+                        raise Exception("Isi baterai tidak dapat melebihi kapasitas sebenarnya")
+                    elif i.charge < 0:
+                        raise Exception("Isi baterai tidak boleh negatif")
+                    elif i.charge == i.real_cap:
+                        #Kalau baterai penuh, maka akan di assign di inventory_full, kalau inventory penuh, assign ke charging port
+                        if (len(self.inventory_full) + len(self.inventory_empty)) < self.inventory_size:
+                            self.inventory_full.append(i)
+                        else:
+                            self.charging_port.append(i)
+                    elif i.charge < i.real_cap:
+                        #Kalau baterai kosong, maka akan di assign ke charging port, kalau charging port penuh, di assign ke inventory_empty
+                        if len(self.charging_port) < self.charging_port_size:
+                            self.charging_port.append(i)
+                        else:
+                            self.inventory_empty.append(i)
+            
+            
+
     
 
     #queue kalau charging port penuh
-    # TODO: isi fungsi ini
+    # TODO: Sepertinya bagian ini mau diganti karena kita sudah ganti sistem
     def add_queue(self):
         pass
     
     #pindah dari queue ke charging port
-    # TODO: isi fungsi ini
+    # TODO: Sepertinya bagian ini mau diganti juga karena kita sudah ganti sistem
     def queue_to_charging(self):
         pass
 
@@ -143,36 +196,68 @@ class switching_model(Model):
         #Nanti schedule harus coba dimodifikasi sendiri
         self.schedule = RandomActivation(self)
 
+        #Id agent
+        self.current_id = -1
+
         #Array untuk nyimpen agent
         self.batteries = []
         self.motorists = []
         self.stations = []
 
         #Create battery
+        print("Ini create baterai")
         for i in range(self.num_of_batteries):
-            bat = battery(self.next_id(),self)
+            #Create new battery
+            new_id = self.next_id()
+            print(new_id)
+            bat = battery(unique_id = new_id,model = self)
+
             self.schedule.add(bat)
             #Tambahkan ke list baterai
             self.batteries.append(bat)
 
 
         #Create motorist
+        print("Ini create motor")
         for i in range(self.num_of_motorist):
-
+            
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            mot = motorist(self.next_id(),(x,y),self,batteries=self.batteries[i])
+
+            #Create new motorist
+            new_id = self.next_id()
+            print(new_id)
+            mot = motorist(new_id,(x,y),self,batteries=self.batteries[i])
+
+            #Testing
+            print("id baterai motorist")
+            print(mot.batteries.unique_id)
+
+            #Place agent
             self.grid.place_agent(mot,(x,y))
             self.schedule.add(mot)
             #Tambahkan ke list motor
             self.motorists.append(mot)
 
         #Create stations
+        print("Ini create station")
         for i in range(self.num_of_stations):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
             #Create station + assign batteries
-            stat = station(self.next_id(), (x,y), self, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+            new_id = self.next_id()
+            print(new_id)
+            stat = station(new_id, (x,y), self, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+
+            #Testing
+            print("id baterai station")
+            for i in stat.inventory_full:
+                print(i.unique_id)
+            for i in stat.inventory_empty:
+                print(i.unique_id)
+            for i in stat.charging_port:
+                print(i.unique_id)
+
             self.grid.place_agent(stat,(x,y))
             self.schedule.add(stat)
             #Tambahkan ke list station
@@ -180,3 +265,4 @@ class switching_model(Model):
 
         #TODO: Definisikan datacollector untuk model ini
         self.datacollector = DataCollector({})
+# %%
