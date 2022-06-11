@@ -1,4 +1,5 @@
 # %%
+from random import random
 import numpy as np
 from mesa import Agent,Model
 from mesa.time import RandomActivation
@@ -59,6 +60,9 @@ class motorist(Agent):
         #Assign posisi
         self.pos = pos
 
+        #Target station coordinate
+        self.target_coor = None
+
     #TODO: Fungsi ini mau di cek lagi
     def change_battery(self, new_bat):
         empties = self.batteries
@@ -76,13 +80,47 @@ class motorist(Agent):
     
     #TODO: Buat fungsi untuk mencari station terdekat 
     def move_to_station(self):
-        pass
+        if abs(self.pos[0]-self.target_coor[0]) > 0:
+            if (self.target_coor[0] - self.pos[0]) > 0:
+                #Gerak ke kanan
+                self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
+            else:
+                #Gerak ke kiri
+                self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
+        elif abs(self.pos[1] - self.target_coor[1]) > 0:
+            if (self.target_coor[1]-self.pos[1]) > 0:
+                #Gerak ke atas
+                self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
+            else:
+                #Gerak ke bawah
+                self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
+
+    def set_target_station(self):
+        for stat in self.model.stations:
+            #Kalau ga ada target, maka langsung assign
+            if self.target_coor == None:
+                self.target_coor = stat.pos
+            else:
+                #Hitung Manhattan distancenya, lalu bandingkan
+                old_man_distance = abs(self.pos[0]-self.target_coor[0]) + abs(self.pos[1]-self.target_coor[1])
+                new_man_distance = abs(self.pos[0]-stat.pos[0]) + abs(self.pos[1] - stat.pos[1])
+                if new_man_distance < old_man_distance:
+                    self.target_coor = stat.pos
+
 
     #TODO: Isi fungsi ini dengan random move dan move to station
     def step(self):
-        self.random_move()
-        print(self.pos)
-        
+        #Cek persentase baterai, kalau baterai <= 10 persen, maka cari station
+        if (self.batteries.charge/self.batteries.real_cap) > 0.1:
+            self.random_move()
+            #TODO: Jangan lupa kurangin isi baterai tiap kali gerak
+        else:
+            #Cek sudah ada target atau belum
+            if self.target_coor == None:
+                self.set_target_station()
+            else:
+                pass
+
 
 
 # %%
@@ -175,7 +213,7 @@ class switching_model(Model):
     num_of_motorist: Jumlah motor
     num_of_stations: Jumlah station
     '''
-    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20):
+    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False):
     
         #Jumlah motor
         self.num_of_motorist = num_of_motorist
@@ -187,6 +225,9 @@ class switching_model(Model):
         self.cp_size = cp_size
         #Jumlah baterai = jumlah motor yang ada + jumlah station*Kapasitas station
         self.num_of_batteries = num_of_motorist + num_of_stations*(self.inv_size + self.cp_size)
+
+        #Gerak Moore atau von Neumann
+        self.moore = moore
 
         #Definisikan ukuran grid
         self.width = width
@@ -225,7 +266,7 @@ class switching_model(Model):
 
             #Create new motorist
             new_id = self.next_id()
-            mot = motorist(new_id,(x,y),self,batteries=self.batteries[i])
+            mot = motorist(new_id,(x,y),self,batteries=self.batteries[i],moore=self.moore)
 
 
             #Place agent
@@ -236,6 +277,7 @@ class switching_model(Model):
 
         #Create stations
         for i in range(self.num_of_stations):
+            #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya dan ga di posisi yang sama
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
             #Create station + assign batteries
@@ -253,4 +295,3 @@ class switching_model(Model):
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
-# %%
