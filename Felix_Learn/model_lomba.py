@@ -6,8 +6,15 @@ from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 
-
 #%%
+
+def alive_num(model):
+    num_of_alive = 0
+    for motor in model.motorists:
+        if motor.alive:
+            num_of_alive += 1
+    return num_of_alive
+
 class battery(Agent):
     num_of_batteries = 0
     degradation_rate = 0.00025 #Ini didapatkan dari standar baterai HP, secara umum setelah 800 charge cycle, battery health tinggal 80%/0.8
@@ -28,7 +35,11 @@ class battery(Agent):
     def degrade(self):
         self.health -= battery.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
 
-    def consume_charge(self,cons_charge):
+    def consume_charge(self):
+        '''
+        Saat ini, cons_charge akan ditentukan melalui aproksimasi kasar: karena time step 1 menit, maka dengan menggunakan asumsi kecepatan motor sebesar 40 km/jam, pada setiap step agent akan bergerak sejauh 2/3 km. Selain itu, diketahui pula untuk 170 km, diperlukan energi sebesar 2600 Wh. Akan didapatkan penggunaan sebesar 15 Wh/km. Berarti akan dihabiskan energi sebesar 10Wh per menit/step
+        '''
+        cons_charge = 10 #Wh
         self.charge -= cons_charge
 
     #TODO: isi ini, tapi sepertinya terlihat tidak usah
@@ -60,14 +71,26 @@ class motorist(Agent):
         #Assign posisi
         self.pos = pos
 
-        #Target station coordinate
-        self.target_coor = None
+        #Target station
+        self.target_station = None
 
     #TODO: Fungsi ini mau di cek lagi
     def change_battery(self, new_bat):
+        #Baterai kosong
         empties = self.batteries
-        self.batteries = new_bat
-        return empties
+        #Cek tipe station, dengan inventory atau tidak
+        if self.target_station.inventory_size>0:
+            #Ngecek station punya baterai penuh atau tidak:
+            if len(self.target_station.inventory_full) > 0:
+                #TODO: Ganti baterai
+                pass
+            else:
+                self.set_target_station(self.target_station)
+        else:
+            #TODO: Buat logika untuk station tanpa inventory
+            pass
+
+
 
     #TODO: Isi fungsi ini dengan logika gerak
     def random_move(self):
@@ -80,46 +103,67 @@ class motorist(Agent):
     
     #TODO: Buat fungsi untuk mencari station terdekat 
     def move_to_station(self):
-        if abs(self.pos[0]-self.target_coor[0]) > 0:
-            if (self.target_coor[0] - self.pos[0]) > 0:
+        if abs(self.pos[0]-self.target_station.pos[0]) > 0:
+            if (self.target_station.pos[0] - self.pos[0]) > 0:
                 #Gerak ke kanan
                 self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
             else:
                 #Gerak ke kiri
                 self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
-        elif abs(self.pos[1] - self.target_coor[1]) > 0:
-            if (self.target_coor[1]-self.pos[1]) > 0:
+        elif abs(self.pos[1] - self.target_station.pos[1]) > 0:
+            if (self.target_station.pos[1]-self.pos[1]) > 0:
                 #Gerak ke atas
                 self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
             else:
                 #Gerak ke bawah
                 self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
+        else:
+            raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
 
-    def set_target_station(self):
-        for stat in self.model.stations:
+    def set_target_station(self, old_target = None):
+        #Kalau misalnya ada old_target, dia akan diexclude dari pencarian target
+        stats = self.model.stations
+        if old_target == None:
+            pass
+        else:
+            stats.remove(old_target)
+
+        for stat in stats:
             #Kalau ga ada target, maka langsung assign
-            if self.target_coor == None:
-                self.target_coor = stat.pos
+            if self.target_station == None:
+                self.target_station = stat
             else:
                 #Hitung Manhattan distancenya, lalu bandingkan
-                old_man_distance = abs(self.pos[0]-self.target_coor[0]) + abs(self.pos[1]-self.target_coor[1])
+                old_man_distance = abs(self.pos[0]-self.target_station.pos[0]) + abs(self.pos[1]-self.target_station.pos[1])
                 new_man_distance = abs(self.pos[0]-stat.pos[0]) + abs(self.pos[1] - stat.pos[1])
                 if new_man_distance < old_man_distance:
-                    self.target_coor = stat.pos
+                    self.target_station = stat
 
 
-    #TODO: Isi fungsi ini dengan random move dan move to station
     def step(self):
         #Cek persentase baterai, kalau baterai <= 10 persen, maka cari station
-        if (self.batteries.charge/self.batteries.real_cap) > 0.1:
-            self.random_move()
-            #TODO: Jangan lupa kurangin isi baterai tiap kali gerak
-        else:
-            #Cek sudah ada target atau belum
-            if self.target_coor == None:
-                self.set_target_station()
+        if self.alive:
+            if (self.batteries.charge/self.batteries.real_cap) > 0.1:
+                self.random_move()
+                self.batteries.consume_charge()
             else:
-                pass
+                #Cek sudah ada target atau belum
+                if self.target_station == None:
+                    self.set_target_station()
+                else:
+                    #Cek posisinya udah sama dengan target atau belum
+                    if self.pos == self.target_station.pos:
+                        #TODO: Masukkan fungsi tukar baterai, lalu hapus target_station
+                        pass
+                    else:
+                        self.move_to_station()
+                        self.batteries.consume_charge()
+                        if self.batteries.charge <= 0:
+                            self.batteries.charge = 0
+                            self.alive = False
+
+        else:
+            pass
 
 
 
@@ -289,8 +333,16 @@ class switching_model(Model):
             #Tambahkan ke list station
             self.stations.append(stat)
 
-        #TODO: Definisikan datacollector untuk model ini
-        self.datacollector = DataCollector(agent_reporters={"Position": "pos"})
+        #TODO: Lengkapi data collector
+        #TODO: Buat jumlah motorist yang masih hidup
+        self.datacollector = DataCollector(
+            model_reporters = {
+                "num_of_alive": alive_num
+            },
+            agent_reporters={
+                "Position": "pos"
+            }
+        )
 
     def step(self):
         self.datacollector.collect(self)
