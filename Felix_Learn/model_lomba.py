@@ -39,7 +39,7 @@ class battery(Agent):
 
 class motorist(Agent):
 
-    def __init__(self, unique_id, pos, model, batteries = None,moore = False): 
+    def __init__(self, unique_id, pos, model, batteries = None, moore = False): 
         super().__init__(unique_id,model)
         #Assign baterai
         if batteries == None:
@@ -53,12 +53,13 @@ class motorist(Agent):
             if self.batteries.charge > 0:
                 self.alive = True
         
-        #Tentukan aturan gerakan motor, bila True maka moore, bila False maka manhattan
+        #Tentukan aturan gerakan motor, bila True maka moore, bila False maka von Neumann
         self.moore = moore
 
         #Assign posisi
         self.pos = pos
 
+    #TODO: Fungsi ini mau di cek lagi
     def change_battery(self, new_bat):
         empties = self.batteries
         self.batteries = new_bat
@@ -67,11 +68,11 @@ class motorist(Agent):
     #TODO: Isi fungsi ini dengan logika gerak
     def random_move(self):
         #argumen terakhir false karena kita ingin driver untuk tetap bergerak, bukan diam di tempat
-        next_moves = self.model.grid.get_neighbourhood(self.pos, self.moore, False)
+        next_moves = self.model.grid.get_neighborhood(self.pos, self.moore, False)
         #pick a position to move to
         next_move = self.random.choice(next_moves)
         #move the agent
-        self.model.grid.move_agent(self.next_move)
+        self.model.grid.move_agent(self,next_move)
     
     #TODO: Buat fungsi untuk mencari station terdekat 
     def move_to_station(self):
@@ -79,7 +80,8 @@ class motorist(Agent):
 
     #TODO: Isi fungsi ini dengan random move dan move to station
     def step(self):
-        pass
+        self.random_move()
+        print(self.pos)
         
 
 
@@ -112,7 +114,7 @@ class station(Agent):
             self.inventory_empty = []
             self.charging_port = []
             #Di cek dulu apakah assigned_batteries melebihi kapasitas station
-            if len(assigned_batteries) > charging_port_size + inventory_size:
+            if len(assigned_batteries) > (self.charging_port_size+ self.inventory_size):
                 raise Exception("Baterai yang di assign di station terlalu banyak")
             else:
                 #Kita akan assign battery, pertama2 akan di cek dulu apakah terdapat error, lalu baru di cek apakah baterai penuh atau kosong
@@ -193,7 +195,7 @@ class switching_model(Model):
         #Definisikan grid dan schedule
         self.grid = MultiGrid(width, height, True)
         
-        #Nanti schedule harus coba dimodifikasi sendiri
+        #TODO:Nanti schedule harus coba dimodifikasi sendiri
         self.schedule = RandomActivation(self)
 
         #Id agent
@@ -205,11 +207,9 @@ class switching_model(Model):
         self.stations = []
 
         #Create battery
-        print("Ini create baterai")
         for i in range(self.num_of_batteries):
             #Create new battery
             new_id = self.next_id()
-            print(new_id)
             bat = battery(unique_id = new_id,model = self)
 
             self.schedule.add(bat)
@@ -218,7 +218,6 @@ class switching_model(Model):
 
 
         #Create motorist
-        print("Ini create motor")
         for i in range(self.num_of_motorist):
             
             x = self.random.randrange(self.width)
@@ -226,12 +225,8 @@ class switching_model(Model):
 
             #Create new motorist
             new_id = self.next_id()
-            print(new_id)
             mot = motorist(new_id,(x,y),self,batteries=self.batteries[i])
 
-            #Testing
-            print("id baterai motorist")
-            print(mot.batteries.unique_id)
 
             #Place agent
             self.grid.place_agent(mot,(x,y))
@@ -240,23 +235,12 @@ class switching_model(Model):
             self.motorists.append(mot)
 
         #Create stations
-        print("Ini create station")
         for i in range(self.num_of_stations):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
             #Create station + assign batteries
             new_id = self.next_id()
-            print(new_id)
             stat = station(new_id, (x,y), self, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
-
-            #Testing
-            print("id baterai station")
-            for i in stat.inventory_full:
-                print(i.unique_id)
-            for i in stat.inventory_empty:
-                print(i.unique_id)
-            for i in stat.charging_port:
-                print(i.unique_id)
 
             self.grid.place_agent(stat,(x,y))
             self.schedule.add(stat)
@@ -264,5 +248,9 @@ class switching_model(Model):
             self.stations.append(stat)
 
         #TODO: Definisikan datacollector untuk model ini
-        self.datacollector = DataCollector({})
+        self.datacollector = DataCollector(agent_reporters={"Position": "pos"})
+
+    def step(self):
+        self.datacollector.collect(self)
+        self.schedule.step()
 # %%
