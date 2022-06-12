@@ -83,14 +83,20 @@ class motorist(Agent):
         #Baterai kosong
         empty_bat = self.batteries
         #Cek tipe station, dengan inventory atau tidak
-        if self.target_station.inventory_size>0:
+        if self.target_station.inventory_size > 0:
             #Ngecek station punya baterai penuh atau tidak:
             if len(self.target_station.inventory_full) > 0:
                 self.target_station.inventory_empty.append(empty_bat)
                 self.batteries = self.target_station.inventory_full[0]
                 self.target_station.inventory_full.remove(self.batteries)
-            else:
-                self.set_target_station(self.target_station)
+                self.target_station = None
+            elif len(self.target_station.inventory_full) == 0:
+                print("Station habis")
+                if self.batteries.charge <=0:
+                    self.batteries.charge = 0
+                    self.alive = False
+                else:
+                    self.set_target_station(self.target_station)
         else:
             #TODO: Buat logika untuk station tanpa inventory
             pass
@@ -154,12 +160,19 @@ class motorist(Agent):
             else:
                 #Cek sudah ada target atau belum
                 if self.target_station == None:
-                    self.set_target_station()
+                    if self.batteries.charge <=0:
+                        self.batteries.charge = 0
+                        self.alive = False
+                    else:
+                        self.set_target_station()
                 else:
                     #Cek posisinya udah sama dengan target atau belum
                     if self.pos == self.target_station.pos:
                         #TODO: Masukkan fungsi tukar baterai, lalu hapus target_station
                         self.change_battery()
+                        if self.batteries.charge <= 0:
+                            self.batteries.charge = 0
+                            self.alive = False
                     else:
                         self.move_to_station()
                         self.batteries.consume_charge()
