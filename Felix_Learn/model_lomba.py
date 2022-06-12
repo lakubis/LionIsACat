@@ -16,7 +16,6 @@ def alive_num(model):
     return num_of_alive
 
 class battery(Agent):
-    num_of_batteries = 0
     degradation_rate = 0.00025 #Ini didapatkan dari standar baterai HP, secara umum setelah 800 charge cycle, battery health tinggal 80%/0.8
 
     def __init__(self, unique_id, model, max_cap = 2600, health = 1):
@@ -29,9 +28,12 @@ class battery(Agent):
         self.health = health
         self.real_cap = max_cap*health
         self.charge = self.real_cap
-        battery.num_of_batteries += 1
-        self.id = battery.num_of_batteries
+
+        #Biar ga error
         self.alive = None
+        self.inventory_full = []
+        self.inventory_empty = []
+        self.charging_port = []
 
     def degrade(self):
         self.health -= battery.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
@@ -71,6 +73,9 @@ class motorist(Agent):
 
         #Biar ga error
         self.charge = None
+        self.inventory_full = []
+        self.inventory_empty = []
+        self.charging_port = []
 
         #Assign posisi
         self.pos = pos
@@ -86,17 +91,20 @@ class motorist(Agent):
         if self.target_station.inventory_size > 0:
             #Ngecek station punya baterai penuh atau tidak:
             if len(self.target_station.inventory_full) > 0:
+                #print(len(self.target_station.inventory_full))
+                #print(len(self.target_station.inventory_empty))
                 self.target_station.inventory_empty.append(empty_bat)
                 self.batteries = self.target_station.inventory_full[0]
                 self.target_station.inventory_full.remove(self.batteries)
+                #print("Motor dengan id: " + str(self.unique_id) + " menukar baterai " + str(empty_bat.unique_id) + " dengan " + str(self.batteries.unique_id))
+                
                 self.target_station = None
-            elif len(self.target_station.inventory_full) == 0:
-                print("Station habis")
-                if self.batteries.charge <=0:
-                    self.batteries.charge = 0
+            elif (len(self.target_station.inventory_full) == 0):
+                #print("Station habis")
+                if self.batteries.charge ==0:
                     self.alive = False
                 else:
-                    self.set_target_station(self.target_station)
+                    self.set_target_station()
         else:
             #TODO: Buat logika untuk station tanpa inventory
             pass
@@ -114,7 +122,11 @@ class motorist(Agent):
     
     #TODO: Buat fungsi untuk mencari station terdekat 
     def move_to_station(self):
+        if self.target_station == None:
+            raise Exception("Tidak ada target")
         if abs(self.pos[0]-self.target_station.pos[0]) > 0:
+            #next_moves = self.model.grid.get_neighborhood(self.pos,self.moore,False)
+            #print(next_moves)
             if (self.target_station.pos[0] - self.pos[0]) > 0:
                 #Gerak ke kanan
                 self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
@@ -131,24 +143,26 @@ class motorist(Agent):
         else:
             raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
 
-    def set_target_station(self, old_target = None):
-        #Kalau misalnya ada old_target, dia akan diexclude dari pencarian target
+    def set_target_station(self):
+        #Kalau misalnya ada target lama, dia akan diexclude dari pencarian target
         stats = self.model.stations.copy()
-        if old_target == None:
+        if self.target_station == None:
             pass
         else:
-            stats.remove(old_target)
+            stats.remove(self.target_station)
 
+        curr_target = None
         for stat in stats:
             #Kalau ga ada target, maka langsung assign
-            if self.target_station == None:
-                self.target_station = stat
+            if curr_target == None:
+                curr_target = stat
             else:
                 #Hitung Manhattan distancenya, lalu bandingkan
-                old_man_distance = abs(self.pos[0]-self.target_station.pos[0]) + abs(self.pos[1]-self.target_station.pos[1])
+                old_man_distance = abs(self.pos[0]-curr_target.pos[0]) + abs(self.pos[1]-curr_target.pos[1])
                 new_man_distance = abs(self.pos[0]-stat.pos[0]) + abs(self.pos[1] - stat.pos[1])
                 if new_man_distance < old_man_distance:
-                    self.target_station = stat
+                    curr_target = stat
+        self.target_station = curr_target
 
 
     def step(self):
@@ -157,11 +171,10 @@ class motorist(Agent):
             if (self.batteries.charge/self.batteries.real_cap) > 0.1:
                 self.random_move()
                 self.batteries.consume_charge()
-            else:
+            elif (self.batteries.charge/self.batteries.real_cap) <= 0.1:
                 #Cek sudah ada target atau belum
                 if self.target_station == None:
-                    if self.batteries.charge <=0:
-                        self.batteries.charge = 0
+                    if self.batteries.charge == 0:
                         self.alive = False
                     else:
                         self.set_target_station()
@@ -170,14 +183,12 @@ class motorist(Agent):
                     if self.pos == self.target_station.pos:
                         #TODO: Masukkan fungsi tukar baterai, lalu hapus target_station
                         self.change_battery()
-                        if self.batteries.charge <= 0:
-                            self.batteries.charge = 0
+                        if self.batteries.charge == 0:
                             self.alive = False
                     else:
                         self.move_to_station()
                         self.batteries.consume_charge()
-                        if self.batteries.charge <= 0:
-                            self.batteries.charge = 0
+                        if self.batteries.charge == 0:
                             self.alive = False
         else:
             pass
@@ -213,9 +224,6 @@ class station(Agent):
         if assigned_batteries ==None:
             pass
         else:
-            self.inventory_full = []
-            self.inventory_empty = []
-            self.charging_port = []
             #Di cek dulu apakah assigned_batteries melebihi kapasitas station
             if len(assigned_batteries) > (self.charging_port_size+ self.inventory_size):
                 raise Exception("Baterai yang di assign di station terlalu banyak")
@@ -356,7 +364,7 @@ class switching_model(Model):
 
             #Create station + assign batteries
             new_id = self.next_id()
-            stat = station(new_id, (x,y), self, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+            stat = station(new_id, (x,y), self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
 
             self.grid.place_agent(stat,(x,y))
             self.schedule.add(stat)
@@ -372,7 +380,10 @@ class switching_model(Model):
             agent_reporters={
                 "Position": "pos",
                 "Charge": "charge",
-                "Alive": "alive"
+                "Alive": "alive",
+                "Full_battery": lambda a: len(a.inventory_full),
+                "Empty_battery": lambda a: len(a.inventory_empty),
+                "Charging_port": lambda a: len(a.charging_port)
             }
         )
 
