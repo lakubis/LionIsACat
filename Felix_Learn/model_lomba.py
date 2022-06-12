@@ -31,6 +31,7 @@ class battery(Agent):
         self.charge = self.real_cap
         battery.num_of_batteries += 1
         self.id = battery.num_of_batteries
+        self.alive = None
 
     def degrade(self):
         self.health -= battery.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
@@ -78,7 +79,7 @@ class motorist(Agent):
         self.target_station = None
 
     #TODO: Fungsi ini mau di cek lagi
-    def change_battery(self, new_bat):
+    def change_battery(self):
         #Baterai kosong
         empty_bat = self.batteries
         #Cek tipe station, dengan inventory atau tidak
@@ -126,7 +127,7 @@ class motorist(Agent):
 
     def set_target_station(self, old_target = None):
         #Kalau misalnya ada old_target, dia akan diexclude dari pencarian target
-        stats = self.model.stations
+        stats = self.model.stations.copy()
         if old_target == None:
             pass
         else:
@@ -194,6 +195,7 @@ class station(Agent):
 
         #Biar ga error
         self.charge = None
+        self.alive = None
 
         if assigned_batteries ==None:
             pass
@@ -356,7 +358,8 @@ class switching_model(Model):
             },
             agent_reporters={
                 "Position": "pos",
-                "Charge": "charge"
+                "Charge": "charge",
+                "Alive": "alive"
             }
         )
 
