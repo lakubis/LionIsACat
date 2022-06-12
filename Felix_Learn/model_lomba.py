@@ -68,6 +68,9 @@ class motorist(Agent):
         #Tentukan aturan gerakan motor, bila True maka moore, bila False maka von Neumann
         self.moore = moore
 
+        #Biar ga error
+        self.charge = None
+
         #Assign posisi
         self.pos = pos
 
@@ -77,13 +80,14 @@ class motorist(Agent):
     #TODO: Fungsi ini mau di cek lagi
     def change_battery(self, new_bat):
         #Baterai kosong
-        empties = self.batteries
+        empty_bat = self.batteries
         #Cek tipe station, dengan inventory atau tidak
         if self.target_station.inventory_size>0:
             #Ngecek station punya baterai penuh atau tidak:
             if len(self.target_station.inventory_full) > 0:
-                #TODO: Ganti baterai
-                pass
+                self.target_station.inventory_empty.append(empty_bat)
+                self.batteries = self.target_station.inventory_full[0]
+                self.target_station.inventory_full.remove(self.batteries)
             else:
                 self.set_target_station(self.target_station)
         else:
@@ -154,14 +158,13 @@ class motorist(Agent):
                     #Cek posisinya udah sama dengan target atau belum
                     if self.pos == self.target_station.pos:
                         #TODO: Masukkan fungsi tukar baterai, lalu hapus target_station
-                        pass
+                        self.change_battery()
                     else:
                         self.move_to_station()
                         self.batteries.consume_charge()
                         if self.batteries.charge <= 0:
                             self.batteries.charge = 0
                             self.alive = False
-
         else:
             pass
 
@@ -188,6 +191,9 @@ class station(Agent):
         self.inventory_full = []
         self.inventory_empty = []
         self.charging_port = []
+
+        #Biar ga error
+        self.charge = None
 
         if assigned_batteries ==None:
             pass
@@ -321,9 +327,18 @@ class switching_model(Model):
 
         #Create stations
         for i in range(self.num_of_stations):
-            #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya dan ga di posisi yang sama
+            #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
+            same_coor = True
+            while same_coor:
+                same_coor = False
+                for stat in self.stations:
+                    if (x,y) == stat.pos:
+                        same_coor = True
+                        x = self.random.randrange(self.width)
+                        y = self.random.randrange(self.height)
+
             #Create station + assign batteries
             new_id = self.next_id()
             stat = station(new_id, (x,y), self, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
@@ -340,7 +355,8 @@ class switching_model(Model):
                 "num_of_alive": alive_num
             },
             agent_reporters={
-                "Position": "pos"
+                "Position": "pos",
+                "Charge": "charge"
             }
         )
 
