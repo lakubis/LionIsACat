@@ -121,7 +121,7 @@ class motorist(Agent):
         else:
             if len(self.target_station.cp_full) > 0:
                 #Tukar baterai
-                empty_bat.degrade()
+                #empty_bat.degrade()
                 self.target_station.cp_empty.append(empty_bat)
                 self.batteries = self.target_station.cp_full[0]
                 self.target_station.cp_full.remove(self.batteries)
@@ -309,7 +309,7 @@ class station(Agent):
 
             #degradasi baterai dan tukar baterai
             for bat in empty_bats:
-                bat.degrade()
+                #bat.degrade()
                 self.cp_empty.append(bat)
                 self.inventory_empty.remove(bat)
 
@@ -341,18 +341,28 @@ class switching_model(Model):
     num_of_motorist: Jumlah motor
     num_of_stations: Jumlah station
     '''
-    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False):
+    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False, configuration = "random"):
     
         #Jumlah motor
         self.num_of_motorist = num_of_motorist
         #Jumlah station
-        self.num_of_stations = num_of_stations
+        self.num_of_stations = None
+        if configuration == "random":
+            self.num_of_stations = num_of_stations
+        elif configuration == "less":
+            self.num_of_stations = 5
+        elif configuration == "normal":
+            self.num_of_stations = 9
+        elif configuration == "more":
+            self.num_of_stations = 13
+        print(self.num_of_stations)
+
         #Jumlah inventory
         self.inv_size = inv_size
         #Jumlah charging port
         self.cp_size = cp_size
         #Jumlah baterai = jumlah motor yang ada + jumlah station*Kapasitas station
-        self.num_of_batteries = num_of_motorist + num_of_stations*(self.inv_size + self.cp_size)
+        self.num_of_batteries = self.num_of_motorist + self.num_of_stations*(self.inv_size + self.cp_size)
 
         #Gerak Moore atau von Neumann
         self.moore = moore
@@ -403,28 +413,64 @@ class switching_model(Model):
             #Tambahkan ke list motor
             self.motorists.append(mot)
 
-        #Create stations
-        for i in range(self.num_of_stations):
-            #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya
-            x = self.random.randrange(self.width)
-            y = self.random.randrange(self.height)
-            same_coor = True
-            while same_coor:
-                same_coor = False
-                for stat in self.stations:
-                    if (x,y) == stat.pos:
-                        same_coor = True
-                        x = self.random.randrange(self.width)
-                        y = self.random.randrange(self.height)
+        if configuration == "random":
+            #Create stations
+            for i in range(self.num_of_stations):
+                #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya
+                x = self.random.randrange(self.width)
+                y = self.random.randrange(self.height)
+                same_coor = True
+                while same_coor:
+                    same_coor = False
+                    for stat in self.stations:
+                        if (x,y) == stat.pos:
+                            same_coor = True
+                            x = self.random.randrange(self.width)
+                            y = self.random.randrange(self.height)
 
-            #Create station + assign batteries
-            new_id = self.next_id()
-            stat = station(new_id, (x,y), self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+                #Create station + assign batteries
+                new_id = self.next_id()
+                stat = station(new_id, (x,y), self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
 
-            self.grid.place_agent(stat,(x,y))
-            self.schedule.add(stat)
-            #Tambahkan ke list station
-            self.stations.append(stat)
+                self.grid.place_agent(stat,(x,y))
+                self.schedule.add(stat)
+                #Tambahkan ke list station
+                self.stations.append(stat)
+
+        else:
+            coordinates = []
+            if configuration == "less" or configuration == "normal" or configuration == "more":
+                #tambahkan pojok2
+                coordinates.append((0,0))
+                coordinates.append((self.width-1,0))
+                coordinates.append((0, self.height-1))
+                coordinates.append((self.width-1,self.height-1))
+                #tambah titik tengah
+                coordinates.append((np.floor(self.width/2).astype(int)-1, np.floor(self.height/2).astype(int)-1))
+        
+            if configuration == "normal" or configuration == "more":
+                #Tambahkan titik2 samping
+                coordinates.append((np.floor(self.width/2).astype(int)-1, 0))
+                coordinates.append((np.floor(self.width/2).astype(int)-1, self.height-1))
+                coordinates.append((0, np.floor(self.height/2).astype(int)-1))
+                coordinates.append((self.width-1, np.floor(self.height/2).astype(int)-1))
+
+            if configuration == "more":
+                #tambahkan titik2 intermediet
+                coordinates.append((np.floor(self.width/4).astype(int)-1, np.floor(self.height/4).astype(int)-1))
+                coordinates.append((np.floor(self.width/4).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height/4).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+
+            for i in range(self.num_of_stations):
+                #Create station + assign batteries
+                new_id = self.next_id()
+                stat = station(new_id, coordinates[i], self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+
+                self.grid.place_agent(stat,coordinates[i])
+                self.schedule.add(stat)
+                #Tambahkan ke list station
+                self.stations.append(stat)
 
         #TODO: Lengkapi data collector
         self.datacollector = DataCollector(
