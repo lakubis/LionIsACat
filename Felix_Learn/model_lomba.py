@@ -33,19 +33,24 @@ class battery(Agent):
         self.alive = None
         self.inventory_full = []
         self.inventory_empty = []
-        self.charging_port = []
+        self.cp_full = []
+        self.cp_empty = []
 
     def degrade(self):
         self.health -= battery.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
+        #Ini kita sesuaikan kembali real capacity dari baterai
+        self.real_cap = self.max_cap*self.health
 
     def consume_charge(self):
         '''
         Saat ini, cons_charge akan ditentukan melalui aproksimasi kasar: karena time step 1 menit, maka dengan menggunakan asumsi kecepatan motor sebesar 40 km/jam, pada setiap step agent akan bergerak sejauh 2/3 km. Selain itu, diketahui pula untuk 170 km, diperlukan energi sebesar 2600 Wh. Akan didapatkan penggunaan sebesar 15 Wh/km. Berarti akan dihabiskan energi sebesar 10Wh per menit/step
         '''
         cons_charge = 10 #Wh
-        self.charge -= cons_charge
+        self.charge = max(0.0, self.charge - cons_charge)
+        #TODO: check for error, remove this line to improve performance
+        if self.charge < 0:
+            raise Exception("Charge tidak mungkin bernilai negatif")
 
-    #TODO: isi ini, tapi sepertinya terlihat tidak usah
     def step(self):
         pass
 
@@ -75,7 +80,8 @@ class motorist(Agent):
         self.charge = None
         self.inventory_full = []
         self.inventory_empty = []
-        self.charging_port = []
+        self.cp_full = []
+        self.cp_empty = []
 
         #Assign posisi
         self.pos = pos
@@ -83,7 +89,6 @@ class motorist(Agent):
         #Target station
         self.target_station = None
 
-    #TODO: Fungsi ini mau di cek lagi
     def change_battery(self):
         #Baterai kosong
         empty_bat = self.batteries
@@ -98,7 +103,9 @@ class motorist(Agent):
                 self.target_station.inventory_full.remove(self.batteries)
                 #print("Motor dengan id: " + str(self.unique_id) + " menukar baterai " + str(empty_bat.unique_id) + " dengan " + str(self.batteries.unique_id))
                 
+                #Setelah itu hilangkan target station
                 self.target_station = None
+
             elif (len(self.target_station.inventory_full) == 0):
                 #print("Station habis")
                 if self.batteries.charge ==0:
@@ -106,12 +113,22 @@ class motorist(Agent):
                 else:
                     self.set_target_station()
         else:
-            #TODO: Buat logika untuk station tanpa inventory
-            pass
+            if len(self.target_station.cp_full) > 0:
+                #Tukar baterai
+                empty_bat.degrade()
+                self.target_station.cp_empty.append(empty_bat)
+                self.batteries = self.target_station.cp_full[0]
+                self.target_station.cp_full.remove(self.batteries)
+                
+                #Hilangkan target station
+                self.target_station = None
+            elif (len(self.target_station.cp_full) == 0):
+                if self.batteries.charge == 0:
+                    self.alive = False
+                else:
+                    self.set_target_station()
 
 
-
-    #TODO: Isi fungsi ini dengan logika gerak
     def random_move(self):
         #argumen terakhir false karena kita ingin driver untuk tetap bergerak, bukan diam di tempat
         next_moves = self.model.grid.get_neighborhood(self.pos, self.moore, False)
@@ -120,7 +137,6 @@ class motorist(Agent):
         #move the agent
         self.model.grid.move_agent(self,next_move)
     
-    #TODO: Buat fungsi untuk mencari station terdekat 
     def move_to_station(self):
         if self.target_station == None:
             raise Exception("Tidak ada target")
@@ -164,6 +180,9 @@ class motorist(Agent):
                     curr_target = stat
         self.target_station = curr_target
 
+    #TODO: Buat probabilitas geraknya, agar ada distribusi penggunaan
+    def moving_probability(self):
+        pass
 
     def step(self):
         #Cek persentase baterai, kalau baterai <= 10 persen, maka cari station
@@ -181,7 +200,6 @@ class motorist(Agent):
                 else:
                     #Cek posisinya udah sama dengan target atau belum
                     if self.pos == self.target_station.pos:
-                        #TODO: Masukkan fungsi tukar baterai, lalu hapus target_station
                         self.change_battery()
                         if self.batteries.charge == 0:
                             self.alive = False
@@ -193,6 +211,8 @@ class motorist(Agent):
         else:
             pass
 
+    
+
 
 
 # %%
@@ -201,7 +221,8 @@ class station(Agent):
     Di sini, baterai akan disimpan di inventory dan juga charging port.
     inventory_full: List baterai yang terisi penuh
     inventory_empty: List baterai yang kosong tapi belum bisa di cas di charging port (kosong bukan berarti 0, tapi tidak terisi penuh)
-    charging_port: List baterai yang sedang di cas
+    cp_full: List baterai yang penuh di charging port
+    cp_empty: List baterai yang sedang di cas di charging port
     '''
     def __init__(self, unique_id, pos, model, inventory_size = 40,charging_port_size=10, assigned_batteries = None):
         super().__init__(unique_id,model)
@@ -212,10 +233,16 @@ class station(Agent):
         self.charging_port_size = charging_port_size
         self.inventory_size = inventory_size
 
+        #Assign daya, dihitung dari 2600 Wh butuh 3 jam untuk ngecas
+        self.charge_rate = 14.5 #Wh/menit
+
         #Add array inventory dan charging port
         self.inventory_full = []
         self.inventory_empty = []
-        self.charging_port = []
+
+        #cp dipisahkan untuk memudahkan pemodelan nantinya
+        self.cp_full = []
+        self.cp_empty = []
 
         #Biar ga error
         self.charge = None
@@ -239,41 +266,58 @@ class station(Agent):
                         if (len(self.inventory_full) + len(self.inventory_empty)) < self.inventory_size:
                             self.inventory_full.append(i)
                         else:
-                            self.charging_port.append(i)
+                            self.cp_full.append(i)
                     elif i.charge < i.real_cap:
                         #Kalau baterai kosong, maka akan di assign ke charging port, kalau charging port penuh, di assign ke inventory_empty
-                        if len(self.charging_port) < self.charging_port_size:
-                            self.charging_port.append(i)
+                        if (len(self.cp_full) + len(self.cp_empty)) < self.charging_port_size:
+                            self.cp_empty.append(i)
                         else:
                             self.inventory_empty.append(i)
             
-            
-
     
+    def charge_batteries(self):
+        for bat in self.cp_empty:
+            #Biar charge tidak melewati real capacity
+            bat.charge = min(bat.real_cap, bat.charge + self.charge_rate)
 
-    #queue kalau charging port penuh
-    # TODO: Sepertinya bagian ini mau diganti karena kita sudah ganti sistem
-    def add_queue(self):
-        pass
-    
-    #pindah dari queue ke charging port
-    # TODO: Sepertinya bagian ini mau diganti juga karena kita sudah ganti sistem
-    def queue_to_charging(self):
-        pass
+            #TODO: temporary check for error, remove this to improve computational performance
+            if bat.charge > bat.real_cap:
+                raise Exception("Ada error dengan fungsi minimum")
 
-    #pindah dari charging port ke inventory
-    # TODO: isi fungsi ini
-    def charging_to_inventory(self):
-        pass
+            #Kalau baterainya penuh, pindahkan dari cp_empty ke cp_full
+            elif bat.charge == bat.real_cap:
+                self.cp_full.append(bat)
+                self.cp_empty.remove(bat)
 
-    #hilangkan dari inventory
-    # TODO: isi fungsi ini
-    def remove_inventory(self):
-        pass
+        
+    def switch_cp_inventory(self):
+        #Tentukan dulu mana yang lebih sedikit, baterai kosong di inventory atau baterai penuh di charging port
+        min_index = min(len(self.inventory_empty), len(self.cp_full))
+        empty_bats = self.inventory_empty[0,min_index] #Baterai kosong
+        full_bats = self.cp_full[0,min_index] # Baterai penuh
+
+        #degradasi baterai
+        for bat in empty_bats:
+            bat.degrade()
+
+        #tukar empty battery
+        self.inventory_empty.remove(empty_bats)
+        self.cp_empty.append(empty_bats)
+
+        #tukar full battery
+        self.cp_full.remove(full_bats)
+        self.inventory_full.append(full_bats)
+
 
     def step(self):
-    # TODO: isi fungsi ini
-        pass
+        #Bagian ini untuk model yang punya inventory
+        if self.inventory_size > 0:
+            self.charge_batteries()
+            self.switch_cp_inventory()
+        
+        #Bagian ini untuk yang tidak punya inventory
+        else:
+            self.charge_batteries()
 
     
 
@@ -309,7 +353,7 @@ class switching_model(Model):
         #Definisikan grid dan schedule
         self.grid = MultiGrid(width, height, True)
         
-        #TODO:Nanti schedule harus coba dimodifikasi sendiri
+        #TODO:Nanti schedule harus coba dimodifikasi sendiri (tapi ga begitu penting)
         self.schedule = RandomActivation(self)
 
         #Id agent
@@ -372,7 +416,6 @@ class switching_model(Model):
             self.stations.append(stat)
 
         #TODO: Lengkapi data collector
-        #TODO: Buat jumlah motorist yang masih hidup
         self.datacollector = DataCollector(
             model_reporters = {
                 "num_of_alive": alive_num
@@ -383,7 +426,8 @@ class switching_model(Model):
                 "Alive": "alive",
                 "Full_battery": lambda a: len(a.inventory_full),
                 "Empty_battery": lambda a: len(a.inventory_empty),
-                "Charging_port": lambda a: len(a.charging_port)
+                "CP_full": lambda a: len(a.cp_full),
+                "CP_empty": lambda a: len(a.cp_empty)
             }
         )
 
