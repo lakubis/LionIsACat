@@ -36,6 +36,9 @@ class battery(Agent):
         self.cp_full = []
         self.cp_empty = []
 
+        #nama object
+        self.agent_name = "battery"
+
     def degrade(self):
         self.health -= battery.degradation_rate #Diasumsikan degradation rate dari setiap baterai sama
         #Ini kita sesuaikan kembali real capacity dari baterai
@@ -88,6 +91,9 @@ class motorist(Agent):
 
         #Target station
         self.target_station = None
+
+        #Nama object
+        self.agent_name = "motorist"
 
     def change_battery(self):
         #Baterai kosong
@@ -248,6 +254,9 @@ class station(Agent):
         self.charge = None
         self.alive = None
 
+        #Nama agent
+        self.agent_name = "station"
+
         if assigned_batteries ==None:
             pass
         else:
@@ -293,20 +302,22 @@ class station(Agent):
     def switch_cp_inventory(self):
         #Tentukan dulu mana yang lebih sedikit, baterai kosong di inventory atau baterai penuh di charging port
         min_index = min(len(self.inventory_empty), len(self.cp_full))
-        empty_bats = self.inventory_empty[0,min_index] #Baterai kosong
-        full_bats = self.cp_full[0,min_index] # Baterai penuh
 
-        #degradasi baterai
-        for bat in empty_bats:
-            bat.degrade()
+        if min_index > 0:
+            empty_bats = self.inventory_empty[0:min_index] #Baterai kosong
+            full_bats = self.cp_full[0:min_index] # Baterai penuh
 
-        #tukar empty battery
-        self.inventory_empty.remove(empty_bats)
-        self.cp_empty.append(empty_bats)
+            #degradasi baterai dan tukar baterai
+            for bat in empty_bats:
+                bat.degrade()
+                self.cp_empty.append(bat)
+                self.inventory_empty.remove(bat)
 
-        #tukar full battery
-        self.cp_full.remove(full_bats)
-        self.inventory_full.append(full_bats)
+            #tukar full battery
+            for bat in full_bats:
+                self.inventory_full.append(bat)
+                self.cp_full.remove(bat)
+            
 
 
     def step(self):
@@ -424,10 +435,10 @@ class switching_model(Model):
                 "Position": "pos",
                 "Charge": "charge",
                 "Alive": "alive",
-                "Full_battery": lambda a: len(a.inventory_full),
-                "Empty_battery": lambda a: len(a.inventory_empty),
-                "CP_full": lambda a: len(a.cp_full),
-                "CP_empty": lambda a: len(a.cp_empty)
+                "Full_battery": lambda a: len(a.inventory_full) if a.agent_name == "station" else None,
+                "Empty_battery": lambda a: len(a.inventory_empty) if a.agent_name == "station" else None,
+                "CP_full": lambda a: len(a.cp_full) if a.agent_name == "station" else None,
+                "CP_empty": lambda a: len(a.cp_empty) if a.agent_name == "station" else None
             }
         )
 
