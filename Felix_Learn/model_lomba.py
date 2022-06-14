@@ -15,6 +15,12 @@ def alive_num(model):
             num_of_alive += 1
     return num_of_alive
 
+def num_of_charging(model):
+    total_charging = 0
+    for stat in model.stations:
+        total_charging += len(stat.cp_empty)
+    return total_charging
+
 class battery(Agent):
     degradation_rate = 0.00025 #Ini didapatkan dari standar baterai HP, secara umum setelah 800 charge cycle, battery health tinggal 80%/0.8
 
@@ -354,11 +360,11 @@ class switching_model(Model):
         if configuration == "random":
             self.num_of_stations = num_of_stations
         elif configuration == "less":
-            self.num_of_stations = 5
+            self.num_of_stations = 4
         elif configuration == "normal":
             self.num_of_stations = 9
         elif configuration == "more":
-            self.num_of_stations = 13
+            self.num_of_stations = 16
         print(self.num_of_stations)
 
         #Buat distribusi permintaan
@@ -416,6 +422,8 @@ class switching_model(Model):
             new_id = self.next_id()
             mot = motorist(new_id,(x,y),self,batteries=self.batteries[i],moore=self.moore)
 
+            #Randomize charge
+            mot.batteries.charge = np.random.uniform(low = 260.0, high= 2600.0)
 
             #Place agent
             self.grid.place_agent(mot,(x,y))
@@ -449,28 +457,49 @@ class switching_model(Model):
 
         else:
             coordinates = []
-            if configuration == "less" or configuration == "normal" or configuration == "more":
-                #tambahkan pojok2
-                coordinates.append((0,0))
-                coordinates.append((self.width-1,0))
-                coordinates.append((0, self.height-1))
-                coordinates.append((self.width-1,self.height-1))
-                #tambah titik tengah
-                coordinates.append((np.floor(self.width/2).astype(int)-1, np.floor(self.height/2).astype(int)-1))
-        
-            if configuration == "normal" or configuration == "more":
-                #Tambahkan titik2 samping
-                coordinates.append((np.floor(self.width/2).astype(int)-1, 0))
-                coordinates.append((np.floor(self.width/2).astype(int)-1, self.height-1))
-                coordinates.append((0, np.floor(self.height/2).astype(int)-1))
-                coordinates.append((self.width-1, np.floor(self.height/2).astype(int)-1))
-
-            if configuration == "more":
-                #tambahkan titik2 intermediet
-                coordinates.append((np.floor(self.width/4).astype(int)-1, np.floor(self.height/4).astype(int)-1))
-                coordinates.append((np.floor(self.width/4).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
-                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height/4).astype(int)-1))
+            if configuration == "less":
+                #4 titik
+                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
                 coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+                #TODO: remove the print comments, that is just for testing
+                print(len(coordinates))
+        
+            elif configuration == "normal":
+                #9 titik
+                coordinates.append((np.floor(self.width*(1/6)).astype(int)-1, np.floor(self.height*(1/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/6)).astype(int)-1, np.floor(self.height*(3/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/6)).astype(int)-1, np.floor(self.height*(5/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/6)).astype(int)-1, np.floor(self.height*(1/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/6)).astype(int)-1, np.floor(self.height*(3/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/6)).astype(int)-1, np.floor(self.height*(5/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/6)).astype(int)-1, np.floor(self.height*(1/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/6)).astype(int)-1, np.floor(self.height*(3/6)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/6)).astype(int)-1, np.floor(self.height*(5/6)).astype(int)-1))
+
+                
+                print(len(coordinates))
+
+            elif configuration == "more":
+                coordinates.append((np.floor(self.width*(1/8)).astype(int)-1, np.floor(self.height*(1/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/8)).astype(int)-1, np.floor(self.height*(3/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/8)).astype(int)-1, np.floor(self.height*(5/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/8)).astype(int)-1, np.floor(self.height*(7/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/8)).astype(int)-1, np.floor(self.height*(1/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/8)).astype(int)-1, np.floor(self.height*(3/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/8)).astype(int)-1, np.floor(self.height*(5/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/8)).astype(int)-1, np.floor(self.height*(7/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/8)).astype(int)-1, np.floor(self.height*(1/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/8)).astype(int)-1, np.floor(self.height*(3/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/8)).astype(int)-1, np.floor(self.height*(5/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(5/8)).astype(int)-1, np.floor(self.height*(7/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(1/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(3/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(5/8)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(7/8)).astype(int)-1))
+                
+                print(len(coordinates))
 
             for i in range(self.num_of_stations):
                 #Create station + assign batteries
@@ -485,7 +514,8 @@ class switching_model(Model):
         #TODO: Lengkapi data collector
         self.datacollector = DataCollector(
             model_reporters = {
-                "num_of_alive": alive_num
+                "num_of_alive": alive_num,
+                "num_of_charging": num_of_charging
             },
             agent_reporters={
                 "Position": "pos",
