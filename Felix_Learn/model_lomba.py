@@ -186,16 +186,19 @@ class motorist(Agent):
                     curr_target = stat
         self.target_station = curr_target
 
-    #TODO: Buat probabilitas geraknya, agar ada distribusi penggunaan
-    def moving_probability(self):
-        pass
-
     def step(self):
+        #Di sini, kita akan melihat probabilitas gerak
+        move_prob = self.model.demand[self.model.hour]
+        move = False
+        if np.random.uniform(low = 0.0, high= 1.0) < move_prob:
+            move = True
+
         #Cek persentase baterai, kalau baterai <= 10 persen, maka cari station
         if self.alive:
             if (self.batteries.charge/self.batteries.real_cap) > 0.1:
-                self.random_move()
-                self.batteries.consume_charge()
+                if move:
+                    self.random_move()
+                    self.batteries.consume_charge()
             elif (self.batteries.charge/self.batteries.real_cap) <= 0.1:
                 #Cek sudah ada target atau belum
                 if self.target_station == None:
@@ -210,8 +213,9 @@ class motorist(Agent):
                         if self.batteries.charge == 0:
                             self.alive = False
                     else:
-                        self.move_to_station()
-                        self.batteries.consume_charge()
+                        if move:
+                            self.move_to_station()
+                            self.batteries.consume_charge()
                         if self.batteries.charge == 0:
                             self.alive = False
         else:
@@ -341,7 +345,7 @@ class switching_model(Model):
     num_of_motorist: Jumlah motor
     num_of_stations: Jumlah station
     '''
-    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False, configuration = "random"):
+    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False, configuration = "random", demand = None):
     
         #Jumlah motor
         self.num_of_motorist = num_of_motorist
@@ -356,6 +360,9 @@ class switching_model(Model):
         elif configuration == "more":
             self.num_of_stations = 13
         print(self.num_of_stations)
+
+        #Buat distribusi permintaan
+        self.demand = demand
 
         #Jumlah inventory
         self.inv_size = inv_size
@@ -376,6 +383,9 @@ class switching_model(Model):
         
         #TODO:Nanti schedule harus coba dimodifikasi sendiri (tapi ga begitu penting)
         self.schedule = RandomActivation(self)
+
+        #jam, agar perhitungan tidak terlalu banyak
+        self.hour = 0
 
         #Id agent
         self.current_id = -1
@@ -491,3 +501,4 @@ class switching_model(Model):
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
+        self.hour = int(np.floor((self.schedule.steps/60)%24))
