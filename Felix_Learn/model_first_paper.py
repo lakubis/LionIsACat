@@ -1,10 +1,26 @@
+'''
+First made: 19.07.2022
+Last revised: 31.07.2022
+
+This file is modified from the competition file, here we removed several variables to keep track of, because it's just not very useful, it's just for testing and we already knew it works
+The removed variables are:
+*Position
+*cp full
+*cp empty
+*inventory full
+*inventory empty
+'''
+
 # %%
+from logging import exception
 from random import random
 import numpy as np
 from mesa import Agent,Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
+from distribution_functions import commuter_distribution, taxi_distribution, noise_distribution
+import matplotlib.pyplot as plt
 
 #%%
 
@@ -68,7 +84,7 @@ class battery(Agent):
 
 class motorist(Agent):
 
-    def __init__(self, unique_id, pos, model, batteries = None, moore = False): 
+    def __init__(self, unique_id, pos, model, status, batteries = None, moore = False): 
         super().__init__(unique_id,model)
         #Assign baterai
         if batteries == None:
@@ -98,8 +114,11 @@ class motorist(Agent):
         #Target station
         self.target_station = None
 
-        #Nama object
+        #Nama dan status motorist
         self.agent_name = "motorist"
+        #status dapat berupa commuter, taxi, atau noise
+        self.status = status
+
 
     def change_battery(self):
         #Baterai kosong
@@ -194,7 +213,15 @@ class motorist(Agent):
 
     def step(self):
         #Di sini, kita akan melihat probabilitas gerak
-        move_prob = self.model.demand[self.model.hour]
+        if self.status == 'commuter':
+            move_prob = self.model.commute_dis[self.model.minute]
+        elif self.status == 'taxi':
+            move_prob = self.model.taxi_dis[self.model.minute]
+        elif self.status == 'noise':
+            move_prob = self.model.noise_dis[self.model.minute]
+        else:
+            raise exception('Ini tidak seharusnya terjadi, cek distribusi')
+
         move = False
         if np.random.uniform(low = 0.0, high= 1.0) < move_prob:
             move = True
@@ -348,11 +375,12 @@ class switching_model(Model):
     '''
     inv_size: Ukuran inventory station
     cp_size: Ukuran charging port
-    num_of_motorist: Jumlah motor
+    num_of_motorist: array berisi (jumlah commuter, jumlah taxi, jumlah noise)
     num_of_stations: Jumlah station
     '''
-    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False, configuration = "random", demand = None):
+    def __init__(self,num_of_motorist, num_of_stations, inv_size, cp_size, width = 20,height = 20, moore = False, configuration = "random"):
     
+        #TODO: Make three types of motorist, constant function for leisure, constant function for taxis, and two normal functions for commuters(?)
         #Jumlah motor
         self.num_of_motorist = num_of_motorist
         #Jumlah station
@@ -368,14 +396,16 @@ class switching_model(Model):
         print(self.num_of_stations)
 
         #Buat distribusi permintaan
-        self.demand = demand
+        self.commute_dis = commuter_distribution()
+        self.taxi_dis = taxi_distribution()
+        self.noise_dis = noise_distribution()
 
         #Jumlah inventory
         self.inv_size = inv_size
         #Jumlah charging port
         self.cp_size = cp_size
         #Jumlah baterai = jumlah motor yang ada + jumlah station*Kapasitas station
-        self.num_of_batteries = self.num_of_motorist + self.num_of_stations*(self.inv_size + self.cp_size)
+        self.num_of_batteries = sum(self.num_of_motorist) + self.num_of_stations*(self.inv_size + self.cp_size)
 
         #Gerak Moore atau von Neumann
         self.moore = moore
@@ -387,11 +417,10 @@ class switching_model(Model):
         #Definisikan grid dan schedule
         self.grid = MultiGrid(width, height, True)
         
-        #TODO:Nanti schedule harus coba dimodifikasi sendiri (tapi ga begitu penting)
         self.schedule = RandomActivation(self)
 
         #jam, agar perhitungan tidak terlalu banyak
-        self.hour = 0
+        self.minute = 0
 
         #Id agent
         self.current_id = -1
@@ -412,29 +441,45 @@ class switching_model(Model):
             self.batteries.append(bat)
 
 
-        #Create motorist
-        for i in range(self.num_of_motorist):
+        
+        #bat_id untuk assign ke motor
+        bat_id = 0
+
+        #Create motor
+        for i in range(len(num_of_motorist)):
             
-            x = self.random.randrange(self.width)
-            y = self.random.randrange(self.height)
+            if i == 0:
+                status = "commuter"
+            elif i == 1:
+                status = "taxi"
+            elif i == 2:
+                status = "noise"
 
-            #Create new motorist
-            new_id = self.next_id()
-            mot = motorist(new_id,(x,y),self,batteries=self.batteries[i],moore=self.moore)
 
-            #Randomize charge
-            mot.batteries.charge = np.random.uniform(low = 260.0, high= 2600.0)
+            for j in range(num_of_motorist[i]):
+                x = self.random.randrange(self.width)
+                y = self.random.randrange(self.height)
 
-            #Place agent
-            self.grid.place_agent(mot,(x,y))
-            self.schedule.add(mot)
-            #Tambahkan ke list motor
-            self.motorists.append(mot)
+                #Create new motorist
+                new_id = self.next_id()
+                mot = motorist(new_id,(x,y),self,status,batteries=self.batteries[bat_id],moore=self.moore)
 
+                #Randomize charge
+                mot.batteries.charge = np.random.uniform(low = 260.0, high= 2600.0)
+
+                #Place agent
+                self.grid.place_agent(mot,(x,y))
+                self.schedule.add(mot)
+                #Tambahkan ke list motor
+                self.motorists.append(mot)
+                bat_id += 1
+                
+
+
+        
         if configuration == "random":
             #Create stations
             for i in range(self.num_of_stations):
-                #TODO: Coba cari bagaimana caranya biar station bisa tersebar merata di mapnya
                 x = self.random.randrange(self.width)
                 y = self.random.randrange(self.height)
                 same_coor = True
@@ -448,7 +493,7 @@ class switching_model(Model):
 
                 #Create station + assign batteries
                 new_id = self.next_id()
-                stat = station(new_id, (x,y), self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+                stat = station(new_id, (x,y), self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[sum(self.num_of_motorist)+i*(self.inv_size+self.cp_size):sum(self.num_of_motorist)+(i+1)*(self.inv_size+self.cp_size)]])
 
                 self.grid.place_agent(stat,(x,y))
                 self.schedule.add(stat)
@@ -463,8 +508,6 @@ class switching_model(Model):
                 coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
                 coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
                 coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
-                #TODO: remove the print comments, that is just for testing
-                print(len(coordinates))
         
             elif configuration == "normal":
                 #9 titik
@@ -504,31 +547,48 @@ class switching_model(Model):
             for i in range(self.num_of_stations):
                 #Create station + assign batteries
                 new_id = self.next_id()
-                stat = station(new_id, coordinates[i], self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[self.num_of_motorist+i*(self.inv_size+self.cp_size):self.num_of_motorist+(i+1)*(self.inv_size+self.cp_size)]])
+                stat = station(new_id, coordinates[i], self,inventory_size=self.inv_size, charging_port_size=self.cp_size, assigned_batteries=[bat for bat in self.batteries[sum(self.num_of_motorist)+i*(self.inv_size+self.cp_size):sum(self.num_of_motorist)+(i+1)*(self.inv_size+self.cp_size)]])
 
                 self.grid.place_agent(stat,coordinates[i])
                 self.schedule.add(stat)
                 #Tambahkan ke list station
                 self.stations.append(stat)
 
-        #TODO: Lengkapi data collector
         self.datacollector = DataCollector(
             model_reporters = {
                 "num_of_alive": alive_num,
                 "num_of_charging": num_of_charging
             },
             agent_reporters={
-                "Position": "pos",
                 "Charge": "charge",
                 "Alive": "alive",
-                "Full_battery": lambda a: len(a.inventory_full) if a.agent_name == "station" else None,
-                "Empty_battery": lambda a: len(a.inventory_empty) if a.agent_name == "station" else None,
-                "CP_full": lambda a: len(a.cp_full) if a.agent_name == "station" else None,
-                "CP_empty": lambda a: len(a.cp_empty) if a.agent_name == "station" else None
             }
         )
+
+    #TODO: add a function to draw the probability density
+    def draw_prob_des(self):
+        total_dis = np.zeros(24*60)
+        for i in range(self.num_of_motorist[0]):
+            total_dis = total_dis + self.commute_dis
+        for i in range(self.num_of_motorist[1]):
+            total_dis = total_dis + self.taxi_dis
+        for i in range(self.num_of_motorist[2]):
+            total_dis = total_dis + self.noise_dis
+            
+        hour = ["05:00","06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00","00:00","01:00","02:00","03:00","04:00"]
+        fig, ax = plt.subplots(figsize=[18,6])
+        ax.plot(total_dis/max(total_dis))
+
+        ax.set_xticks(np.arange(0,24*60,60))
+        ax.set_xticklabels(hour)
+        ax.set_ylim([0,1.1])
+        ax.set_xlim([0,24*60])
+        ax.set_title('Normalized demand',fontsize = 24)
+        ax.set_ylabel('demand',fontsize = 24)
+        ax.set_xlabel('time', fontsize = 24)
+
 
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
-        self.hour = int(np.floor((self.schedule.steps/60)%24))
+        self.minute = int(self.schedule.steps%(24*60))
