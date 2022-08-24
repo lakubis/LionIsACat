@@ -1,4 +1,8 @@
-# LionIsACat
-Learning repo Leon dan Felix
+# Lion is a cat learning repo
 
-Ini adalah tempat belajarnya Felix dan Leon
+## Members
+* Felix Cahyadi
+* Leonardo Valentino Kosasih
+
+## Description
+This repository contains an ABM project. More details later.
