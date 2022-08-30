@@ -78,21 +78,26 @@ if __name__ == '__main__':
 
     ax.set_xticks(np.arange(0,24*60,60))
     ax.set_xticklabels(hour)
+    plt.show()
 
 
     #%%
     fig, ax = plt.subplots(figsize=[18,6])
-    ax.plot(constant_distribution())
+    ax.plot(noise_distribution())
 
     ax.set_xticks(np.arange(0,24*60,60))
     ax.set_xticklabels(hour)
+
+    plt.show()
 
     #%%
     fig, ax = plt.subplots(figsize=[18,6])
-    ax.plot(worker_distribution())
+    ax.plot(taxi_distribution())
 
     ax.set_xticks(np.arange(0,24*60,60))
     ax.set_xticklabels(hour)
+
+    plt.show()
 
 
 
