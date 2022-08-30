@@ -171,24 +171,54 @@ class motorist(Agent):
     def move_to_station(self):
         if self.target_station == None:
             raise Exception("Tidak ada target")
+
+        move_H = False
+        move_V = False
         if abs(self.pos[0]-self.target_station.pos[0]) > 0:
             #next_moves = self.model.grid.get_neighborhood(self.pos,self.moore,False)
             #print(next_moves)
+            move_H = True
+        elif abs(self.pos[1] - self.target_station.pos[1]) > 0:
+            move_V = True
+        else:
+            raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
+
+        if move_H & move_V:
+            decision = bool(random.getrandbits(1))
+            if decision:
+                if (self.target_station.pos[0] - self.pos[0]) > 0:
+                    #Gerak ke kanan
+                    self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
+                else:
+                    #Gerak ke kiri
+                    self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
+            else:
+                if (self.target_station.pos[1]-self.pos[1]) > 0:
+                    #Gerak ke atas
+                    self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
+                else:
+                    #Gerak ke bawah
+                    self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
+        elif move_H:
+            #TODO: Never repeat yourself
             if (self.target_station.pos[0] - self.pos[0]) > 0:
                 #Gerak ke kanan
                 self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
             else:
                 #Gerak ke kiri
                 self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
-        elif abs(self.pos[1] - self.target_station.pos[1]) > 0:
+        elif move_V:
+            #TODO: Never repeat yourself
             if (self.target_station.pos[1]-self.pos[1]) > 0:
                 #Gerak ke atas
                 self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
             else:
                 #Gerak ke bawah
                 self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
-        else:
-            raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
+
+
+
+
 
     def set_target_station(self):
         #Kalau misalnya ada target lama, dia akan diexclude dari pencarian target
@@ -560,6 +590,7 @@ class switching_model(Model):
                 "num_of_charging": num_of_charging
             },
             agent_reporters={
+                "Position": "pos",
                 "Charge": "charge",
                 "Alive": "alive",
             }
@@ -583,9 +614,9 @@ class switching_model(Model):
         ax.set_xticklabels(hour)
         ax.set_ylim([0,1.1])
         ax.set_xlim([0,24*60])
-        ax.set_title('Normalized demand',fontsize = 24)
-        ax.set_ylabel('demand',fontsize = 24)
-        ax.set_xlabel('time', fontsize = 24)
+        #ax.set_title('Normalized demand',fontsize = 18)
+        ax.set_ylabel('Demand',fontsize = 18)
+        ax.set_xlabel('Time', fontsize = 18)
 
 
     def step(self):
