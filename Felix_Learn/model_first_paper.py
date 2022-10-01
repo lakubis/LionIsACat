@@ -131,13 +131,15 @@ class motorist(Agent):
                 #print(len(self.target_station.inventory_empty))
                 self.target_station.inventory_empty.append(empty_bat)
                 self.batteries = self.target_station.inventory_full[0]
-                self.target_station.inventory_full.remove(self.batteries)
+                self.target_station.inventory_full.remove(self.batteries) #successfully charge
+                self.target_station.register[0] += 1
                 #print("Motor dengan id: " + str(self.unique_id) + " menukar baterai " + str(empty_bat.unique_id) + " dengan " + str(self.batteries.unique_id))
                 
                 #Setelah itu hilangkan target station
                 self.target_station = None
 
-            elif (len(self.target_station.inventory_full) == 0):
+            elif (len(self.target_station.inventory_full) == 0): # fail to charge
+                self.target_station.register[1] += 1
                 #print("Station habis")
                 if self.batteries.charge ==0:
                     self.alive = False
@@ -149,11 +151,14 @@ class motorist(Agent):
                 #empty_bat.degrade()
                 self.target_station.cp_empty.append(empty_bat)
                 self.batteries = self.target_station.cp_full[0]
-                self.target_station.cp_full.remove(self.batteries)
+                self.target_station.cp_full.remove(self.batteries) #successfully charge
+
+                self.target_station.register[0] += 1
                 
                 #Hilangkan target station
                 self.target_station = None
-            elif (len(self.target_station.cp_full) == 0):
+            elif (len(self.target_station.cp_full) == 0): # fail to charge
+                self.target_station.register[1] += 1
                 if self.batteries.charge == 0:
                     self.alive = False
                 else:
@@ -305,6 +310,9 @@ class station(Agent):
         #Assign spesifikasi
         self.charging_port_size = charging_port_size
         self.inventory_size = inventory_size
+
+        #register, if charging is successful, then self.register[0] += 1, and if it fails self.register[1] += 1
+        self.register = np.zeros(2)
 
         #Assign daya, dihitung dari 2600 Wh butuh 3 jam untuk ngecas
         self.charge_rate = 14.5 #Wh/menit
@@ -534,10 +542,10 @@ class switching_model(Model):
             coordinates = []
             if configuration == "less":
                 #4 titik
-                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
-                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
-                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
-                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.ceil(self.width*(1/4)).astype(int)-1, np.ceil(self.height*(1/4)).astype(int)-1))
+                coordinates.append((np.ceil(self.width*(1/4)).astype(int)-1, np.ceil(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.ceil(self.width*(3/4)).astype(int)-1, np.ceil(self.height*(1/4)).astype(int)-1))
+                coordinates.append((np.ceil(self.width*(3/4)).astype(int)-1, np.ceil(self.height*(3/4)).astype(int)-1))
         
             elif configuration == "normal":
                 #9 titik
@@ -552,7 +560,6 @@ class switching_model(Model):
                 coordinates.append((np.floor(self.width*(5/6)).astype(int)-1, np.floor(self.height*(5/6)).astype(int)-1))
 
                 
-                print(len(coordinates))
 
             elif configuration == "more":
                 coordinates.append((np.floor(self.width*(1/8)).astype(int)-1, np.floor(self.height*(1/8)).astype(int)-1))
@@ -572,7 +579,9 @@ class switching_model(Model):
                 coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(5/8)).astype(int)-1))
                 coordinates.append((np.floor(self.width*(7/8)).astype(int)-1, np.floor(self.height*(7/8)).astype(int)-1))
                 
-                print(len(coordinates))
+
+            for coor in coordinates:
+                print(coor)
 
             for i in range(self.num_of_stations):
                 #Create station + assign batteries
@@ -583,6 +592,7 @@ class switching_model(Model):
                 self.schedule.add(stat)
                 #Tambahkan ke list station
                 self.stations.append(stat)
+                
 
         self.datacollector = DataCollector(
             model_reporters = {
@@ -618,8 +628,49 @@ class switching_model(Model):
         ax.set_ylabel('Demand',fontsize = 18)
         ax.set_xlabel('Time', fontsize = 18)
 
+    # Function to plot the number of success and fail
+    def plot_reg(self):
+        labels = []
+        success_charge = [] # array for successful charge attempts
+        fail_charge = [] # array for failed charge attempts
+        for stat in self.stations:
+            labels.append("Stat" + str(stat.unique_id))
+            success_charge.append(stat.register[0])
+            fail_charge.append(stat.register[1])
+
+        fig, ax = plt.subplots(figsize = (12,8))
+        x = np.arange(len(labels))
+        width = 0.35
+        rects1 = ax.bar(x - width/2, success_charge, width, label = 'Success')
+        rects2 = ax.bar(x + width/2, fail_charge, width, label = 'Fail')
+        ax.set_ylabel('Number of attempts')
+        ax.set_title('Number of successful and failed charging attempts')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.legend()
+
+        self.autolabel(rects1,ax)
+        self.autolabel(rects2,ax)
+
+        fig.tight_layout()
+        plt.show()
+    
+    
+    def autolabel(self,rects,ax):
+        """Attach a text label above each bar in *rects*, displaying its height."""
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate('{}'.format(height),
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
+
+
 
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
         self.minute = int(self.schedule.steps%(24*60))
+
+# %%
