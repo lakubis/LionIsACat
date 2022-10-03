@@ -1,6 +1,6 @@
 '''
 First made: 19.07.2022
-Last revised: 31.07.2022
+Last revised: 03.10.2022
 
 This file is modified from the competition file, here we removed several variables to keep track of, because it's just not very useful, it's just for testing and we already knew it works
 The removed variables are:
@@ -9,6 +9,8 @@ The removed variables are:
 *cp empty
 *inventory full
 *inventory empty
+
+03.10.2022: Made some changes to the move algorithm. Hopefully the bias will be removed
 '''
 
 # %%
@@ -21,6 +23,7 @@ from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 from distribution_functions import commuter_distribution, taxi_distribution, noise_distribution
 import matplotlib.pyplot as plt
+import math
 
 #%%
 
@@ -180,46 +183,17 @@ class motorist(Agent):
         move_H = False
         move_V = False
         if abs(self.pos[0]-self.target_station.pos[0]) > 0:
-            #next_moves = self.model.grid.get_neighborhood(self.pos,self.moore,False)
-            #print(next_moves)
             move_H = True
         elif abs(self.pos[1] - self.target_station.pos[1]) > 0:
             move_V = True
         else:
             raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
 
-        if move_H & move_V:
-            decision = bool(random.getrandbits(1))
-            if decision:
-                if (self.target_station.pos[0] - self.pos[0]) > 0:
-                    #Gerak ke kanan
-                    self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
-                else:
-                    #Gerak ke kiri
-                    self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
-            else:
-                if (self.target_station.pos[1]-self.pos[1]) > 0:
-                    #Gerak ke atas
-                    self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
-                else:
-                    #Gerak ke bawah
-                    self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
-        elif move_H:
-            #TODO: Never repeat yourself
-            if (self.target_station.pos[0] - self.pos[0]) > 0:
-                #Gerak ke kanan
-                self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
-            else:
-                #Gerak ke kiri
-                self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
+        
+        if move_H:
+            self.move_horizontal()
         elif move_V:
-            #TODO: Never repeat yourself
-            if (self.target_station.pos[1]-self.pos[1]) > 0:
-                #Gerak ke atas
-                self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
-            else:
-                #Gerak ke bawah
-                self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
+            self.move_vertical()
 
 
 
@@ -233,6 +207,29 @@ class motorist(Agent):
         else:
             stats.remove(self.target_station)
 
+        # TODO: Look at what's wrong with the distance algorithm
+
+        '''
+        for stat in stats:
+
+            # This is the new station choosing logic
+            min_dis = math.inf #set it to infinity
+            for stat in stats:
+                new_man_distance = abs(self.pos[0]-stat.pos[0]) + abs(self.pos[1] - stat.pos[1])
+                if new_man_distance < min_dis:
+                    min_dis = new_man_distance
+                
+            # After we got the minimum distance, we'll remove any station that is farther than the min_dis
+            for stat in stats:
+                new_man_distance = abs(self.pos[0]-stat.pos[0]) + abs(self.pos[1] - stat.pos[1])
+                if new_man_distance > min_dis:
+                    stats.remove(stat)
+        
+
+            # After we got the final collection of stations, we'll choose random station as our target station
+        self.target_station = np.random.choice(stats)
+        '''
+
         curr_target = None
         for stat in stats:
             #Kalau ga ada target, maka langsung assign
@@ -245,6 +242,25 @@ class motorist(Agent):
                 if new_man_distance < old_man_distance:
                     curr_target = stat
         self.target_station = curr_target
+        
+
+    # This is a method to move the agent horizontally
+    def move_horizontal(self):
+        if (self.target_station.pos[0] - self.pos[0]) > 0:
+            #Gerak ke kanan
+            self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
+        else:
+            #Gerak ke kiri
+            self.model.grid.move_agent(self,(self.pos[0] - 1,self.pos[1]))
+
+    # This is a method to move the agent vertically
+    def move_vertical(self):
+        if (self.target_station.pos[1]-self.pos[1]) > 0:
+            #Gerak ke atas
+            self.model.grid.move_agent(self,(self.pos[0],self.pos[1] + 1))
+        else:
+            #Gerak ke bawah
+            self.model.grid.move_agent(self,(self.pos[0],self.pos[1] - 1))
 
     def step(self):
         #Di sini, kita akan melihat probabilitas gerak
@@ -542,10 +558,10 @@ class switching_model(Model):
             coordinates = []
             if configuration == "less":
                 #4 titik
-                coordinates.append((np.ceil(self.width*(1/4)).astype(int)-1, np.ceil(self.height*(1/4)).astype(int)-1))
-                coordinates.append((np.ceil(self.width*(1/4)).astype(int)-1, np.ceil(self.height*(3/4)).astype(int)-1))
-                coordinates.append((np.ceil(self.width*(3/4)).astype(int)-1, np.ceil(self.height*(1/4)).astype(int)-1))
-                coordinates.append((np.ceil(self.width*(3/4)).astype(int)-1, np.ceil(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(1/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(1/4)).astype(int)-1))
+                coordinates.append((np.floor(self.width*(3/4)).astype(int)-1, np.floor(self.height*(3/4)).astype(int)-1))
         
             elif configuration == "normal":
                 #9 titik
