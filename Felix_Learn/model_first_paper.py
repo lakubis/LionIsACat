@@ -1,6 +1,9 @@
 '''
 First made: 19.07.2022
-Last revised: 03.10.2022
+Last revised: 8.1.2023
+
+8.1.2023 
+Creating Unique shape
 
 This file is modified from the competition file, here we removed several variables to keep track of, because it's just not very useful, it's just for testing and we already knew it works
 The removed variables are:
@@ -15,7 +18,7 @@ The removed variables are:
 
 # %%
 from logging import exception
-from random import random
+import random
 import numpy as np
 from mesa import Agent,Model
 from mesa.time import RandomActivation
@@ -182,22 +185,23 @@ class motorist(Agent):
 
         move_H = False
         move_V = False
-        if abs(self.pos[0]-self.target_station.pos[0]) > 0:
-            move_H = True
-        elif abs(self.pos[1] - self.target_station.pos[1]) > 0:
-            move_V = True
-        else:
-            raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")
-
-        
-        if move_H:
-            self.move_horizontal()
+        if abs(self.pos[1] - self.target_station.pos[1]) > 0:
+            move_V= True
+        if abs(self.pos[0]-self.target_station.pos[0])> 0:
+            move_H= True
+        #else:
+            #raise Exception("Sudah berada di lokasi tapi masih disuruh gerak")SS        
+        if move_H and move_V:
+            if bool(random.getrandbits(1)):
+                self.move_vertical()
+            else:
+                self.move_Horizontal()
         elif move_V:
-            self.move_vertical()
-
-
-
-
+            self.move_vertical()        
+        elif move_H:
+            self.move_Horizontal()
+        else:
+            raise Exception('Something is wrong!')
 
     def set_target_station(self):
         #Kalau misalnya ada target lama, dia akan diexclude dari pencarian target
@@ -245,7 +249,7 @@ class motorist(Agent):
         
 
     # This is a method to move the agent horizontally
-    def move_horizontal(self):
+    def move_Horizontal(self):
         if (self.target_station.pos[0] - self.pos[0]) > 0:
             #Gerak ke kanan
             self.model.grid.move_agent(self,(self.pos[0] + 1,self.pos[1]))
